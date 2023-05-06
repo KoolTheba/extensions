@@ -15,6 +15,7 @@ interface DataTypes {
 export default function Command() {
   const [organizationError, setOrganizationError] = useState<string | undefined>();
   const [repositoryError, setRepositoryError] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   function dropOrganizationError() {
     if (organizationError && organizationError.length > 0) {
@@ -29,6 +30,7 @@ export default function Command() {
   }
 
   const fetchScorecardData = async (values: { organization: string; repository: string }) => {
+    setIsLoading(true);
     try {
       const data = (await got(
         `https://api.securityscorecards.dev/projects/github.com/${values.organization}/${values.repository}`
@@ -46,6 +48,7 @@ export default function Command() {
         message: String(error),
       });
     }
+    setIsLoading(false);
   };
 
   const { handleSubmit } = useForm<Values>({
@@ -67,6 +70,13 @@ export default function Command() {
       }
     },
   });
+
+  if (isLoading) {
+    showToast({
+      style: Toast.Style.Animated,
+      title: "Loading...",
+    });
+  }
 
   return (
     <Form
