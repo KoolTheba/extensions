@@ -1,4 +1,4 @@
-import { Form, ActionPanel, Action, showToast, Toast } from "@raycast/api";
+import { Form, ActionPanel, Action, showToast, Toast, List } from "@raycast/api";
 import { useForm } from "@raycast/utils";
 import { useState } from "react";
 import got from "got";
@@ -8,14 +8,27 @@ type Values = {
   repository: string;
 };
 
+interface ScoreElement {
+  name: string;
+  score: number;
+  reason: string;
+  details: string[];
+  documentation: {
+    short: string;
+    url: string;
+  };
+}
+
 interface DataTypes {
   score: number;
+  checks: ScoreElement[];
 }
 
 export default function Command() {
   const [organizationError, setOrganizationError] = useState<string | undefined>();
   const [repositoryError, setRepositoryError] = useState<string | undefined>();
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [report, setReport] = useState<DataTypes | undefined>();
 
   function dropOrganizationError() {
     if (organizationError && organizationError.length > 0) {
@@ -36,16 +49,18 @@ export default function Command() {
         `https://api.securityscorecards.dev/projects/github.com/${values.organization}/${values.repository}`
       ).json()) as DataTypes;
 
+      setReport(data);
+
       showToast({
         style: Toast.Style.Success,
         title: `Current score: ${data.score}/10`,
-        message: `Check the full report at https://kooltheba.github.io/openssf-scorecard-api-visualizer/#/projects/github.com/${values.organization}/${values.repository}`,
+        message: "",
       });
     } catch (error) {
       showToast({
         style: Toast.Style.Failure,
         title: "Error getting the score 🤨",
-        message: String(error),
+        message: "",
       });
     }
     setIsLoading(false);
@@ -76,6 +91,24 @@ export default function Command() {
       style: Toast.Style.Animated,
       title: "Loading...",
     });
+  }
+
+  if (report) {
+    return (
+      <List filtering={true}>
+        {report.checks.map((item) => (
+          <List.Item
+            key={item.name}
+            title={`${item.name} ${item.score}/10`}
+            actions={
+              <ActionPanel>
+                <Action title="Select" onAction={() => console.log(`${item} selected`)} />
+              </ActionPanel>
+            }
+          />
+        ))}
+      </List>
+    );
   }
 
   return (
