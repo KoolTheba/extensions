@@ -1,50 +1,69 @@
 import { Form, ActionPanel, Action, showToast, Toast } from "@raycast/api";
 import { useForm } from "@raycast/utils";
 import { useState } from "react";
+import got from "got";
 
 type Values = {
   organization: string;
   repository: string;
 };
 
+interface DataTypes {
+  score: number;
+}
+
 export default function Command() {
   const [organizationError, setOrganizationError] = useState<string | undefined>();
   const [repositoryError, setRepositoryError] = useState<string | undefined>();
 
-  function dropOrganizationErrorIfNeeded() {
+  function dropOrganizationError() {
     if (organizationError && organizationError.length > 0) {
       setOrganizationError(undefined);
     }
   }
 
-  function dropRepositoryErrorIfNeeded() {
+  function dropRepositoryError() {
     if (repositoryError && repositoryError.length > 0) {
       setRepositoryError(undefined);
     }
   }
 
-  const { handleSubmit } = useForm<Values>({
-    onSubmit(values) {
-      console.log(values);
+  const fetchScorecardData = async (values: { organization: string; repository: string }) => {
+    try {
+      const data = (await got(
+        `https://api.securityscorecards.dev/projects/github.com/${values.organization}/${values.repository}`
+      ).json()) as DataTypes;
 
+      showToast({
+        style: Toast.Style.Success,
+        title: `Current score: ${data.score}/10`,
+        message: `Check the full report at https://kooltheba.github.io/openssf-scorecard-api-visualizer/#/projects/github.com/${values.organization}/${values.repository}`,
+      });
+    } catch (error) {
+      showToast({
+        style: Toast.Style.Failure,
+        title: "Error getting the score 🤨",
+        message: String(error),
+      });
+    }
+  };
+
+  const { handleSubmit } = useForm<Values>({
+    async onSubmit(values) {
       if (values.organization.length === 0) {
         setOrganizationError("The field should't be empty!");
       } else {
-        dropOrganizationErrorIfNeeded();
+        dropOrganizationError();
       }
 
       if (values.repository.length === 0) {
         setRepositoryError("The field should't be empty!");
       } else {
-        dropRepositoryErrorIfNeeded();
+        dropRepositoryError();
       }
 
       if (values.repository && values.organization) {
-        showToast({
-          style: Toast.Style.Success,
-          title: "Submitted!",
-          message: `${values.organization}/${values.repository} requested`,
-        });
+        await fetchScorecardData(values);
       }
     },
   });
@@ -57,48 +76,23 @@ export default function Command() {
         </ActionPanel>
       }
     >
-      <Form.Description text="Enter project details:" />
+      <Form.Description text="Enter project details as read in GitHub:" />
       <Form.TextField
         id="organization"
         title="Organization name"
         placeholder="Enter org/user name"
-        defaultValue="Raycast"
+        defaultValue="nodejs"
         error={organizationError}
-        onChange={dropOrganizationErrorIfNeeded}
+        onChange={dropOrganizationError}
       />
       <Form.TextField
         id="repository"
         title="Repository name"
         placeholder="Enter repo name"
-        defaultValue="Extensions"
+        defaultValue="node"
         error={repositoryError}
-        onChange={dropRepositoryErrorIfNeeded}
+        onChange={dropRepositoryError}
       />
     </Form>
-    // <Form
-    //   actions={
-    //     <ActionPanel>
-    //       <Action.SubmitForm onSubmit={handleSubmit} />
-    //     </ActionPanel>
-    //   }
-    // >
-    //   <Form.Description text="This form showcases all available form elements." />
-    //   <Form.TextField id="textfield" title="Text field" placeholder="Enter text" defaultValue="Raycast" />
-    //   <Form.TextArea id="textarea" title="Text area" placeholder="Enter multi-line text" />
-    //   <Form.Separator />
-    //   <Form.DatePicker id="datepicker" title="Date picker" />
-    //   <Form.Checkbox id="checkbox" title="Checkbox" label="Checkbox Label" storeValue />
-    //   <Form.Dropdown id="dropdown" title="Dropdown">
-    //     <Form.Dropdown.Item value="dropdown-item" title="Dropdown Item" />
-    //   </Form.Dropdown>
-    //   <Form.TagPicker id="tokeneditor" title="Tag picker">
-    //     <Form.TagPicker.Item value="tagpicker-item" title="Tag Picker Item" />
-    //   </Form.TagPicker>
-    // </Form>
   );
 }
-
-// function handleSubmit(values: Values) {
-//   console.log(values);
-//   showToast({ title: "Submitted form", message: "See logs for submitted values" });
-// }
